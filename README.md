@@ -85,6 +85,8 @@ mi-playlist/
 │   │   │   │   └── HomeController.java          # Controlador principal
 │   │   │   ├── model/
 │   │   │   │   └── Video.java                   # Modelo de datos
+│   │   │   ├── repository/
+│   │   │   │   └── VideoRepository.java         # Persistencia JSON
 │   │   │   └── service/
 │   │   │       └── VideoService.java            # Lógica de negocio
 │   │   └── resources/
@@ -143,10 +145,11 @@ mvn surefire-report:report
 
 ### Cobertura de Tests
 
-- **VideoServiceTest**: 18 tests
+- **VideoServiceTest**: 19 tests
   - Inicialización, agregar, eliminar, buscar
   - Incrementar likes, toggle favoritos
   - Listar todos y favoritos
+  - **Persistencia**: Carga de datos, auto-guardado
 
 - **HomeControllerTest**: 13 tests
   - Endpoint GET /
@@ -204,12 +207,26 @@ mvn surefire-report:report
 
 ## Persistencia
 
-La aplicación utiliza **almacenamiento en memoria** (ArrayList) con datos iniciales de ejemplo:
-- The Weeknd - Blinding Lights
-- Ed Sheeran - Shape of You
-- Dua Lipa - Levitating
+La aplicación utiliza **persistencia en archivo JSON** (`playlist.json`) para guardar los datos de forma permanente.
 
-**Nota**: Los datos se reinician cada vez que se reinicia la aplicación.
+### Características de Persistencia:
+- ✅ **Auto-guardado**: Todos los cambios se guardan automáticamente
+- ✅ **Auto-carga**: Los datos se cargan al iniciar la aplicación
+- ✅ **Archivo JSON**: Datos guardados en formato legible y editable
+- ✅ **Persistencia entre ejecuciones**: Los videos, likes y favoritos se mantienen
+
+### Datos Iniciales:
+Si es la primera ejecución (no existe `playlist.json`), se inicializa con 3 videos de ejemplo:
+- The Weeknd - Blinding Lights (42 likes, favorito)
+- Ed Sheeran - Shape of You (28 likes)
+- Dua Lipa - Levitating (15 likes, favorito)
+
+### Ubicación del Archivo:
+```
+playlist.json (en el directorio raíz del proyecto)
+```
+
+**Nota**: El archivo `playlist.json` está en `.gitignore` para no subir datos de usuario al repositorio.
 
 ## Solución de Problemas
 

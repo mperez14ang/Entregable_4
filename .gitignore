@@ -26,5 +26,8 @@ Thumbs.db
 *.db
 *.h2.db
 
+# Playlist data (user data, should not be committed)
+playlist.json
+
 # Compiled class files
 *.class

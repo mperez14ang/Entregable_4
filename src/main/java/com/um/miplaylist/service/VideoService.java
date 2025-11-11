@@ -1,8 +1,13 @@
 package com.um.miplaylist.service;
 
 import com.um.miplaylist.model.Video;
+import com.um.miplaylist.repository.VideoRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -10,30 +15,85 @@ import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Servicio para gestionar la playlist de videos.
- * Utiliza almacenamiento en memoria (ArrayList) para persistencia simple.
+ * Utiliza VideoRepository para persistir datos en JSON.
+ * Los cambios se guardan automáticamente después de cada operación.
  */
 @Service
 public class VideoService {
 
+    private static final Logger logger = LoggerFactory.getLogger(VideoService.class);
+
     private final List<Video> videos;
     private final AtomicLong idGenerator;
+    private final VideoRepository repository;
 
     /**
-     * Constructor que inicializa la lista con videos de ejemplo.
+     * Constructor que inicializa la lista cargando datos persistidos
+     * o creando videos de ejemplo si es la primera ejecución.
      */
-    public VideoService() {
+    @Autowired
+    public VideoService(VideoRepository repository) {
+        this.repository = repository;
         this.videos = new ArrayList<>();
         this.idGenerator = new AtomicLong(1);
 
-        // Inicializar con videos de ejemplo (canciones populares)
-        inicializarVideosDeEjemplo();
+        // Cargar datos persistidos o inicializar con ejemplos
+        cargarDatos();
+    }
+
+    /**
+     * Carga los datos desde el archivo JSON.
+     * Si no existe el archivo, inicializa con videos de ejemplo.
+     */
+    private void cargarDatos() {
+        try {
+            if (repository.existeArchivo()) {
+                List<Video> videosCargados = repository.cargar();
+                if (!videosCargados.isEmpty()) {
+                    videos.addAll(videosCargados);
+
+                    // Ajustar el generador de IDs al máximo ID existente
+                    long maxId = videos.stream()
+                            .map(Video::getId)
+                            .max(Long::compareTo)
+                            .orElse(0L);
+                    idGenerator.set(maxId + 1);
+
+                    logger.info("Cargados {} videos desde {}", videos.size(), repository.getRutaArchivo());
+                    return;
+                }
+            }
+
+            // Si no hay datos, inicializar con ejemplos
+            inicializarVideosDeEjemplo();
+            guardarDatos();
+            logger.info("Inicializados {} videos de ejemplo", videos.size());
+
+        } catch (IOException e) {
+            logger.error("Error al cargar datos, inicializando con ejemplos", e);
+            inicializarVideosDeEjemplo();
+        }
+    }
+
+    /**
+     * Guarda los datos actuales en el archivo JSON.
+     */
+    private void guardarDatos() {
+        try {
+            repository.guardar(videos);
+            logger.debug("Datos guardados exitosamente en {}", repository.getRutaArchivo());
+        } catch (IOException e) {
+            logger.error("Error al guardar datos", e);
+        }
     }
 
     /**
      * Inicializa la playlist con videos musicales de ejemplo.
      */
     private void inicializarVideosDeEjemplo() {
-        agregarVideo(new Video(
+        videos.clear();
+
+        videos.add(new Video(
             idGenerator.getAndIncrement(),
             "The Weeknd - Blinding Lights",
             "https://www.youtube.com/watch?v=4NRXx6U8ABQ",
@@ -41,7 +101,7 @@ public class VideoService {
             true
         ));
 
-        agregarVideo(new Video(
+        videos.add(new Video(
             idGenerator.getAndIncrement(),
             "Ed Sheeran - Shape of You",
             "https://www.youtube.com/watch?v=JGwWNGJdvx8",
@@ -49,7 +109,7 @@ public class VideoService {
             false
         ));
 
-        agregarVideo(new Video(
+        videos.add(new Video(
             idGenerator.getAndIncrement(),
             "Dua Lipa - Levitating",
             "https://www.youtube.com/watch?v=TUVcZfQe-Kw",
@@ -59,7 +119,7 @@ public class VideoService {
     }
 
     /**
-     * Agrega un nuevo video a la playlist.
+     * Agrega un nuevo video a la playlist y guarda los cambios.
      *
      * @param video Video a agregar
      * @return El video agregado con su ID asignado
@@ -69,17 +129,22 @@ public class VideoService {
             video.setId(idGenerator.getAndIncrement());
         }
         videos.add(video);
+        guardarDatos();
         return video;
     }
 
     /**
-     * Elimina un video de la playlist por su ID.
+     * Elimina un video de la playlist por su ID y guarda los cambios.
      *
      * @param id ID del video a eliminar
      * @return true si se eliminó, false si no se encontró
      */
     public boolean eliminarVideo(Long id) {
-        return videos.removeIf(video -> video.getId().equals(id));
+        boolean eliminado = videos.removeIf(video -> video.getId().equals(id));
+        if (eliminado) {
+            guardarDatos();
+        }
+        return eliminado;
     }
 
     /**
@@ -104,7 +169,7 @@ public class VideoService {
     }
 
     /**
-     * Incrementa los likes de un video.
+     * Incrementa los likes de un video y guarda los cambios.
      *
      * @param id ID del video
      * @return true si se incrementó, false si no se encontró el video
@@ -113,13 +178,14 @@ public class VideoService {
         Optional<Video> videoOpt = buscarPorId(id);
         if (videoOpt.isPresent()) {
             videoOpt.get().incrementarLikes();
+            guardarDatos();
             return true;
         }
         return false;
     }
 
     /**
-     * Cambia el estado de favorito de un video.
+     * Cambia el estado de favorito de un video y guarda los cambios.
      *
      * @param id ID del video
      * @return true si se cambió, false si no se encontró el video
@@ -128,6 +194,7 @@ public class VideoService {
         Optional<Video> videoOpt = buscarPorId(id);
         if (videoOpt.isPresent()) {
             videoOpt.get().toggleFavorito();
+            guardarDatos();
             return true;
         }
         return false;

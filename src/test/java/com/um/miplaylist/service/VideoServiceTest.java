@@ -1,25 +1,42 @@
 package com.um.miplaylist.service;
 
 import com.um.miplaylist.model.Video;
+import com.um.miplaylist.repository.VideoRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 
+import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.Mockito.*;
 
 /**
- * Tests completos para VideoService.
+ * Tests completos para VideoService con persistencia.
  * Prueba todas las operaciones: agregar, eliminar, buscar, likes y favoritos.
+ * Usa mock del VideoRepository para evitar operaciones de I/O durante tests.
  */
 class VideoServiceTest {
 
     private VideoService videoService;
 
+    @Mock
+    private VideoRepository videoRepository;
+
     @BeforeEach
-    void setUp() {
-        videoService = new VideoService();
+    void setUp() throws IOException {
+        MockitoAnnotations.openMocks(this);
+
+        // Configurar mock para que no exista archivo (inicializa con ejemplos)
+        when(videoRepository.existeArchivo()).thenReturn(false);
+        doNothing().when(videoRepository).guardar(anyList());
+
+        videoService = new VideoService(videoRepository);
     }
 
     @Test
@@ -31,7 +48,27 @@ class VideoServiceTest {
     }
 
     @Test
-    void testAgregarVideo() {
+    void testCargarDatosExistentes() throws IOException {
+        // Preparar datos simulados
+        List<Video> datosGuardados = new ArrayList<>();
+        datosGuardados.add(new Video(1L, "Video Guardado", "https://www.youtube.com/watch?v=abc", 10, false));
+
+        // Configurar mock para simular carga de datos
+        when(videoRepository.existeArchivo()).thenReturn(true);
+        when(videoRepository.cargar()).thenReturn(datosGuardados);
+        doNothing().when(videoRepository).guardar(anyList());
+
+        // Crear nuevo servicio (que cargará los datos)
+        VideoService servicioConDatos = new VideoService(videoRepository);
+
+        List<Video> videos = servicioConDatos.listarTodos();
+        assertEquals(1, videos.size());
+        assertEquals("Video Guardado", videos.get(0).getNombre());
+        verify(videoRepository, times(1)).cargar();
+    }
+
+    @Test
+    void testAgregarVideoGuardaAutomaticamente() throws IOException {
         int cantidadInicial = videoService.contarVideos();
 
         Video nuevoVideo = new Video(null, "Test Video", "https://www.youtube.com/watch?v=test123");
@@ -40,6 +77,9 @@ class VideoServiceTest {
         assertNotNull(videoAgregado.getId(), "El video debería tener un ID asignado");
         assertEquals(cantidadInicial + 1, videoService.contarVideos(), "Debería aumentar la cantidad de videos");
         assertTrue(videoService.buscarPorId(videoAgregado.getId()).isPresent(), "El video debería existir en la lista");
+
+        // Verificar que se guardó automáticamente
+        verify(videoRepository, atLeastOnce()).guardar(anyList());
     }
 
     @Test
@@ -53,7 +93,7 @@ class VideoServiceTest {
     }
 
     @Test
-    void testEliminarVideoExistente() {
+    void testEliminarVideoExistenteGuardaAutomaticamente() throws IOException {
         List<Video> videos = videoService.listarTodos();
         Long idPrimerVideo = videos.get(0).getId();
         int cantidadInicial = videos.size();
@@ -63,6 +103,9 @@ class VideoServiceTest {
         assertTrue(resultado, "Debería retornar true al eliminar un video existente");
         assertEquals(cantidadInicial - 1, videoService.contarVideos(), "Debería disminuir la cantidad de videos");
         assertFalse(videoService.buscarPorId(idPrimerVideo).isPresent(), "El video no debería existir después de eliminarlo");
+
+        // Verificar que se guardó automáticamente
+        verify(videoRepository, atLeastOnce()).guardar(anyList());
     }
 
     @Test
@@ -98,7 +141,7 @@ class VideoServiceTest {
     }
 
     @Test
-    void testIncrementarLikes() {
+    void testIncrementarLikesGuardaAutomaticamente() throws IOException {
         List<Video> videos = videoService.listarTodos();
         Video video = videos.get(0);
         Long videoId = video.getId();
@@ -111,6 +154,9 @@ class VideoServiceTest {
         Optional<Video> videoActualizado = videoService.buscarPorId(videoId);
         assertTrue(videoActualizado.isPresent());
         assertEquals(likesIniciales + 1, videoActualizado.get().getLikes(), "Los likes deberían incrementarse en 1");
+
+        // Verificar que se guardó automáticamente
+        verify(videoRepository, atLeastOnce()).guardar(anyList());
     }
 
     @Test
@@ -136,7 +182,7 @@ class VideoServiceTest {
     }
 
     @Test
-    void testToggleFavoritoDeActivoAInactivo() {
+    void testToggleFavoritoGuardaAutomaticamente() throws IOException {
         // Buscar un video que esté marcado como favorito
         List<Video> videos = videoService.listarTodos();
         Video videoFavorito = videos.stream()
@@ -154,6 +200,9 @@ class VideoServiceTest {
         Optional<Video> videoActualizado = videoService.buscarPorId(videoId);
         assertTrue(videoActualizado.isPresent());
         assertEquals(!estadoInicial, videoActualizado.get().isFavorito(), "El estado de favorito debería cambiar");
+
+        // Verificar que se guardó automáticamente
+        verify(videoRepository, atLeastOnce()).guardar(anyList());
     }
 
     @Test
