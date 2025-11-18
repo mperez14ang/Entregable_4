@@ -133,45 +133,47 @@ public class VideoService {
                 .findFirst();
     }
 
-
-//    public boolean incrementarLikes(Long id) {
-//        Optional<Video> videoOpt = buscarPorId(id);
-//        if (videoOpt.isPresent()) {
-//            videoOpt.get().incrementarLikes();
-//            guardarDatos();
-//            return true;
-//        }
-//        return false;
-//    }
-//
-//
-//    public boolean toggleFavorito(Long id) {
-//        Optional<Video> videoOpt = buscarPorId(id);
-//        if (videoOpt.isPresent()) {
-//            videoOpt.get().toggleFavorito();
-//            guardarDatos();
-//            return true;
-//        }
-//        return false;
-//    }
-
-    private boolean ejecutarOperacionSobreVideo(Long id, Consumer<Video> operacion) {
+//Comentar de aca
+    public boolean incrementarLikes(Long id) {
         Optional<Video> videoOpt = buscarPorId(id);
         if (videoOpt.isPresent()) {
-            operacion.accept(videoOpt.get());
+            videoOpt.get().incrementarLikes();
             guardarDatos();
             return true;
         }
         return false;
     }
 
-    public boolean incrementarLikes(Long id) {
-        return ejecutarOperacionSobreVideo(id, Video::incrementarLikes);
-    }
 
     public boolean toggleFavorito(Long id) {
-        return ejecutarOperacionSobreVideo(id, Video::toggleFavorito);
+        Optional<Video> videoOpt = buscarPorId(id);
+        if (videoOpt.isPresent()) {
+            videoOpt.get().toggleFavorito();
+            guardarDatos();
+            return true;
+        }
+        return false;
     }
+// a aca
+
+// Descomentar
+//    private boolean ejecutarOperacionSobreVideo(Long id, Consumer<Video> operacion) {
+//        Optional<Video> videoOpt = buscarPorId(id);
+//        if (videoOpt.isPresent()) {
+//            operacion.accept(videoOpt.get());
+//            guardarDatos();
+//            return true;
+//        }
+//        return false;
+//    }
+//
+//    public boolean incrementarLikes(Long id) {
+//        return ejecutarOperacionSobreVideo(id, Video::incrementarLikes);
+//    }
+//
+//    public boolean toggleFavorito(Long id) {
+//        return ejecutarOperacionSobreVideo(id, Video::toggleFavorito);
+//    }
 
     public int contarVideos() {
         return videos.size();
