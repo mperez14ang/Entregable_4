@@ -6,6 +6,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import java.util.function.Consumer;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -13,11 +14,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicLong;
 
-/**
- * Servicio para gestionar la playlist de videos.
- * Utiliza VideoRepository para persistir datos en JSON.
- * Los cambios se guardan automáticamente después de cada operación.
- */
+
 @Service
 public class VideoService {
 
@@ -27,10 +24,7 @@ public class VideoService {
     private final AtomicLong idGenerator;
     private final VideoRepository repository;
 
-    /**
-     * Constructor que inicializa la lista cargando datos persistidos
-     * o creando videos de ejemplo si es la primera ejecución.
-     */
+
     @Autowired
     public VideoService(VideoRepository repository) {
         this.repository = repository;
@@ -41,10 +35,6 @@ public class VideoService {
         cargarDatos();
     }
 
-    /**
-     * Carga los datos desde el archivo JSON.
-     * Si no existe el archivo, inicializa con videos de ejemplo.
-     */
     private void cargarDatos() {
         try {
             if (repository.existeArchivo()) {
@@ -75,9 +65,6 @@ public class VideoService {
         }
     }
 
-    /**
-     * Guarda los datos actuales en el archivo JSON.
-     */
     private void guardarDatos() {
         try {
             repository.guardar(videos);
@@ -87,9 +74,6 @@ public class VideoService {
         }
     }
 
-    /**
-     * Inicializa la playlist con videos musicales de ejemplo.
-     */
     private void inicializarVideosDeEjemplo() {
         videos.clear();
 
@@ -118,12 +102,7 @@ public class VideoService {
         ));
     }
 
-    /**
-     * Agrega un nuevo video a la playlist y guarda los cambios.
-     *
-     * @param video Video a agregar
-     * @return El video agregado con su ID asignado
-     */
+
     public Video agregarVideo(Video video) {
         if (video.getId() == null) {
             video.setId(idGenerator.getAndIncrement());
@@ -133,12 +112,7 @@ public class VideoService {
         return video;
     }
 
-    /**
-     * Elimina un video de la playlist por su ID y guarda los cambios.
-     *
-     * @param id ID del video a eliminar
-     * @return true si se eliminó, false si no se encontró
-     */
+
     public boolean eliminarVideo(Long id) {
         boolean eliminado = videos.removeIf(video -> video.getId().equals(id));
         if (eliminado) {
@@ -147,73 +121,62 @@ public class VideoService {
         return eliminado;
     }
 
-    /**
-     * Obtiene todos los videos de la playlist.
-     *
-     * @return Lista de todos los videos
-     */
     public List<Video> listarTodos() {
         return new ArrayList<>(videos);
     }
 
-    /**
-     * Busca un video por su ID.
-     *
-     * @param id ID del video a buscar
-     * @return Optional con el video si se encuentra, vacío si no
-     */
+
     public Optional<Video> buscarPorId(Long id) {
         return videos.stream()
                 .filter(video -> video.getId().equals(id))
                 .findFirst();
     }
 
-    /**
-     * Incrementa los likes de un video y guarda los cambios.
-     *
-     * @param id ID del video
-     * @return true si se incrementó, false si no se encontró el video
-     */
+
+//    public boolean incrementarLikes(Long id) {
+//        Optional<Video> videoOpt = buscarPorId(id);
+//        if (videoOpt.isPresent()) {
+//            videoOpt.get().incrementarLikes();
+//            guardarDatos();
+//            return true;
+//        }
+//        return false;
+//    }
+//
+//
+//    public boolean toggleFavorito(Long id) {
+//        Optional<Video> videoOpt = buscarPorId(id);
+//        if (videoOpt.isPresent()) {
+//            videoOpt.get().toggleFavorito();
+//            guardarDatos();
+//            return true;
+//        }
+//        return false;
+//    }
+
+    private boolean ejecutarOperacionSobreVideo(Long id, Consumer<Video> operacion) {
+        Optional<Video> videoOpt = buscarPorId(id);
+        if (videoOpt.isPresent()) {
+            operacion.accept(videoOpt.get());
+            guardarDatos();
+            return true;
+        }
+        return false;
+    }
+
     public boolean incrementarLikes(Long id) {
-        Optional<Video> videoOpt = buscarPorId(id);
-        if (videoOpt.isPresent()) {
-            videoOpt.get().incrementarLikes();
-            guardarDatos();
-            return true;
-        }
-        return false;
+        return ejecutarOperacionSobreVideo(id, Video::incrementarLikes);
     }
 
-    /**
-     * Cambia el estado de favorito de un video y guarda los cambios.
-     *
-     * @param id ID del video
-     * @return true si se cambió, false si no se encontró el video
-     */
     public boolean toggleFavorito(Long id) {
-        Optional<Video> videoOpt = buscarPorId(id);
-        if (videoOpt.isPresent()) {
-            videoOpt.get().toggleFavorito();
-            guardarDatos();
-            return true;
-        }
-        return false;
+        return ejecutarOperacionSobreVideo(id, Video::toggleFavorito);
     }
 
-    /**
-     * Obtiene el número total de videos en la playlist.
-     *
-     * @return Cantidad de videos
-     */
     public int contarVideos() {
         return videos.size();
     }
 
-    /**
-     * Obtiene todos los videos marcados como favoritos.
-     *
-     * @return Lista de videos favoritos
-     */
+
     public List<Video> listarFavoritos() {
         return videos.stream()
                 .filter(Video::isFavorito)
