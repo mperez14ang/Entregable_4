@@ -16,11 +16,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.*;
 
-/**
- * Tests completos para VideoService con persistencia.
- * Prueba todas las operaciones: agregar, eliminar, buscar, likes y favoritos.
- * Usa mock del VideoRepository para evitar operaciones de I/O durante tests.
- */
+
 class VideoServiceTest {
 
     private VideoService videoService;
